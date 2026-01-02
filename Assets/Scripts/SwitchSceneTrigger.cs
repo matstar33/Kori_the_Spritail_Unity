@@ -1,11 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System;
+using System.Runtime.InteropServices;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 
 public class SwitchingSceneTrigger : MonoBehaviour
 {
     private enum SwitchPhase { Hidden, FadingIn, WaitingInput, FadingOut, Switching }
-
     [Header("UI (Inspector Binding Only)")]
     [SerializeField] private RawImage buttonIcon;        // 변경: 버튼 아이콘(스위치 버튼 이미지)
     [SerializeField] private TMP_Text switchingText;
