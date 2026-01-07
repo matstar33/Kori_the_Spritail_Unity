@@ -34,9 +34,26 @@ public class weapon : MonoBehaviour
     }
 
 
+    public void Init()
+    {
+        curDur = durMax;
+    }
     public void Enable(bool Enalbe)
     { 
         gameObject.SetActive(Enalbe);
     }
 
+    public void DecreaseDur()
+    {
+        if (weaponType == weapon.Type.Basic) return;
+
+        curDur -= durUseAtk;
+        if(curDur <= 0)
+        {
+            curDur = 0;
+            isBreak = true;
+        }
+
+
+    }
 }

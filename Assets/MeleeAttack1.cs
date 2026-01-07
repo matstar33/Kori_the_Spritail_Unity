@@ -5,13 +5,11 @@ public class MeleeAttack1 : StateMachineBehaviour
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        animator.SetBool("MeleeAttack1", false);
-        int upperBodyLayer = animator.GetLayerIndex("Upper");
-        animator.SetLayerWeight(upperBodyLayer, 0f);
-
         player player = animator.GetComponent<player>();
         player.isAttacking = true;
         player.SetBitAttack();
+        animator.ResetTrigger("MeleeAttack1");
+        //player.canMeleeCancel = false;
     }
 
     override public void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
@@ -26,6 +24,8 @@ public class MeleeAttack1 : StateMachineBehaviour
         player.isAttacking = false;
         player.comboElasepdTime = 0f;
         player.SetBitIdle();
+        player.sucessAttack = true;
+        player.curWeapon.DecreaseDur();
     }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()

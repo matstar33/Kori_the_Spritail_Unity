@@ -5,13 +5,11 @@ public class RangeAttack1 : StateMachineBehaviour
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        animator.SetBool("RangeAttack1", false);
-        int upperBodyLayer = animator.GetLayerIndex("Upper");
-        animator.SetLayerWeight(upperBodyLayer, 0f);
 
         player player = animator.GetComponent<player>();
         player.isAttacking = true;
         player.SetBitAttack();
+        animator.ResetTrigger("RangeAttack");
     }
 
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
@@ -27,6 +25,8 @@ public class RangeAttack1 : StateMachineBehaviour
         player player = animator.GetComponent<player>();
         player.isAttacking = false;
         player.SetBitIdle();
+        player.sucessAttack = true;
+        player.curWeapon.DecreaseDur();
     }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()

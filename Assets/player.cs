@@ -2,18 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GLTFast.Schema;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public enum StateFlag
 {
-    CanMove = 1<< 0,
+    CanMove = 1 << 0,
     CanAttack = 1 << 1,
     CanThrow = 1 << 2,
     CanSwap = 1 << 3,
     CanDash = 1 << 4,
-    CanGrab = 1<< 5
+    CanGrab = 1 << 5
     
 }
 public class player : MonoBehaviour
@@ -23,22 +25,23 @@ public class player : MonoBehaviour
     Animator anim;
     CharacterController cc;
     public GameObject handsocket;
+    public GameObject ShootPos;
     public int MaxHP =100;
     int curHP = 100;
     public int playerIndex = 0;
     public float moveSpeed = 1.0f;
     public int Atk = 1;
     int comboCount = 0;
-    float comboDuration = 0.5f;
+    public float comboDuration = 0.5f;
     public float comboElasepdTime = 0f;
     public bool isAttacking = false;
-    float rapidfireTime = 0.5f;
-    float rapidfireElapsedTime = 0f;
-    bool canRapidfire = false;
+    //float rapidfireTime = 0.5f;
+    //float rapidfireElapsedTime = 0f;
+    //bool canRapidfire = false;
     public float rangedAutoAimRange = 10.0f;
 	float rangeAngle = 150.0f;
-    bool canMeleeCancel = false;
-    float chargingTime = 0.0f;
+    public bool canMeleeCancel = false;
+    //float chargingTime = 0.0f;
     bool isCharging = false;
     bool isChargeAttack = false;
 
@@ -46,16 +49,19 @@ public class player : MonoBehaviour
 
     int countRangeAttack = 0;
     public int countSpecialBullet = 5;
-    public float MaxThrowDistance = 2.5f;
-    public float bombMoveSpeed = 0.05f;
+    //public float MaxThrowDistance = 2.5f;
+   // public float bombMoveSpeed = 0.05f;
 
     public GameObject basicWeaponPrefab;
     public GameObject meleeWeaponPrefab;
     public GameObject rangeWeaponPrefab;
     public GameObject bombWeaponPrefab;
+    public GameObject normalBullet;
+    public GameObject specialBullet;
     int weaponIndex = 0;
     List<weapon> weaponInven = new List<weapon>();
-    weapon curWeapon;
+    public weapon curWeapon;
+    public bool sucessAttack = false;
     void Start()
     {
         cc = GetComponent<CharacterController>();
@@ -70,17 +76,14 @@ public class player : MonoBehaviour
 
         newweapon.transform.localPosition = Vector3.zero;
         newweapon.transform.localRotation = Quaternion.identity;
-        weaponInven.Add(newweapon.GetComponent<weapon>());
-        curWeapon = newweapon.GetComponent<weapon>();
-
-        GameObject newwweapon = Instantiate
+        AddWeapon(newweapon.GetComponent<weapon>());
+        GameObject rangeweapon = Instantiate
            (
       rangeWeaponPrefab,
       handsocket.transform);
-        newwweapon.transform.localPosition = Vector3.zero;
-        newwweapon.transform.localRotation = Quaternion.identity;
-        weaponInven.Add(newwweapon.GetComponent<weapon>());
-        curWeapon = newwweapon.GetComponent<weapon>();
+        rangeweapon.transform.localPosition = Vector3.zero;
+        rangeweapon.transform.localRotation = Quaternion.identity;
+        AddWeapon(rangeweapon.GetComponent<weapon>());
 
 
     }
@@ -88,12 +91,33 @@ public class player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        CharMove();
         CheckComboTime();
+        if(curWeapon.isBreak ==true && sucessAttack == true)
+        {
+            DeleteCurWeapon();
+        }
 
+        if(sucessAttack == true)
+        {
+            sucessAttack = false;
+        }
 
+        if (isDashing)
+        {
+            DashMove();
+            return;
+        }
+        CharMove();
     }
 
+    public void sendDamage(int _damage)
+    {
+        curHP -= _damage;
+        if(curHP <= 0)
+        {
+            curHP = 0;
+        }
+    }
     private void CharMove()
     {
         if ((state & StateFlag.CanMove) == 0) return;
@@ -135,7 +159,6 @@ public class player : MonoBehaviour
             {
                 comboCount = 0;
                 comboElasepdTime = 0;
-                Debug.Log($"ÄÞº¸ÃÊ±âÈ­µÊ: ");
             }
 
         }
@@ -143,12 +166,9 @@ public class player : MonoBehaviour
 
     public void Cancancel()
     {
-        if (isChargeAttack) return;
 
         canMeleeCancel = true;
         comboCount = (comboCount + 1) % 3;
-
-        Debug.Log($"cancancel È£ÃâµÊ: ");
     }
 
     public void EndAttack()
@@ -158,8 +178,15 @@ public class player : MonoBehaviour
     }
     public void OnAttack(InputAction.CallbackContext ctx)
     {
+        if (!ctx.performed)
+            return;
+        Debug.Log("Å° Ã³À½ ´­·¶À» ¶§¸¸ ½ÇÇàµÊ");
         if (isAttacking) return;
-        if (ctx.performed)
+        if (curWeapon.isBreak == true) return;
+        anim.ResetTrigger("MeleeAttack1");
+        anim.ResetTrigger("MeleeAttack2");
+        anim.ResetTrigger("MeleeAttack3");
+        //if (ctx.started)
         {
             if (curWeapon.weaponType == weapon.Type.Basic || curWeapon.weaponType == weapon.Type.Melee)
             {
@@ -167,29 +194,27 @@ public class player : MonoBehaviour
                 {
                     if (comboCount == 0)
                     {
-                        anim.SetBool("MeleeAttack1", true);
+                        anim.SetTrigger("MeleeAttack1");
                         comboElasepdTime = 0;
                     }
-                    if (comboCount == 1)
+                    else if (comboCount == 1)
                     {
-                        anim.SetBool("MeleeAttack2", true);
+                        anim.SetTrigger("MeleeAttack2");
                         comboElasepdTime = 0;
                     }
-                    if (comboCount == 2)
+                    else if (comboCount == 2)
                     {
-                        anim.SetBool("MeleeAttack3", true);
+                        anim.SetTrigger("MeleeAttack3");
                         comboElasepdTime = 0;
                     }
-                    canMeleeCancel = false;
                 }
+                canMeleeCancel = false;
             }
             else if(curWeapon.weaponType == weapon.Type.Range)
             {
 
-                anim.SetBool("RangeAttack1", true);
+                anim.SetTrigger("RangeAttack");
             }
-
-            Debug.Log($"Attack È£ÃâµÊ: ");
         }
     }
 
@@ -197,13 +222,38 @@ public class player : MonoBehaviour
     {
 
     }
-
+    [SerializeField] float dashSpeed = 20f;
+    [SerializeField] float dashDuration = 0.15f;
+    [SerializeField] float dashCooldown = 1.0f;
+    bool isDashing = false;
+    float dashTime = 0f;
+    float lastDashTime = -999f;
+    Vector3 dashDir;
     public void OnDash()
     {
+        if (isDashing) return;
+        if (Time.time < lastDashTime + dashCooldown) return;
+        isDashing = true;
+        dashTime = dashDuration;
+        lastDashTime = Time.time;
+
+        dashDir = transform.forward;
+        anim.SetTrigger("OnDash");
 
     }
 
-   
+    void DashMove()
+    {
+        cc.Move(dashDir * dashSpeed * Time.deltaTime);
+
+        dashTime -= Time.deltaTime;
+        if (dashTime <= 0f)
+        {
+            isDashing = false;
+        }
+    }
+
+
     public void SetBitIdle()
     {
         state = 0;
@@ -253,6 +303,7 @@ public class player : MonoBehaviour
             curWeapon.activeWeapon = true;
 
             comboCount = 0;
+            countRangeAttack = 0;
         }
 
     }
@@ -272,5 +323,122 @@ public class player : MonoBehaviour
         {
             SwapWeaponInternal(1);
         }
+    }
+
+
+
+    public void ShootBullet()
+    {
+        if (countRangeAttack != 0 && (countRangeAttack + 1) % countSpecialBullet == 0)
+        {
+            ShootSpecialBullet();
+            countRangeAttack = 0;
+        }
+        else
+        {
+            ShootNormalBullet();
+            countRangeAttack += 1;
+        }
+    }
+
+    void ShootSpecialBullet()
+    {
+        GameObject specialBulletObj = Instantiate(specialBullet);
+
+        SpecialBullet bulletScript = specialBulletObj.GetComponent<SpecialBullet>();
+        bulletScript.Init(ShootPos.transform.position,transform.forward, curWeapon.AtkDmg + Atk);
+    }
+
+    void ShootNormalBullet()
+    {
+        GameObject normalBulletObj = Instantiate(normalBullet);
+        NormalBullet bulletScript = normalBulletObj.GetComponent<NormalBullet>();
+        bulletScript.Init(ShootPos.transform.position,transform.forward,curWeapon.AtkDmg + Atk);
+    }
+
+
+    [SerializeField] LayerMask bossLayer;
+    void MeleeAttackOnce(float degAngleRange, float degIntervalAngle)
+    {
+        bool AttackEnd = false;
+        Vector3 rayOrgin = transform.position;
+        rayOrgin.y += 0.5f;
+
+        float distacne = curWeapon.itemAtkRange;
+        float startAngle = -degAngleRange / 2.0f;
+        int rayCount = (int)(degAngleRange / degIntervalAngle) + 1;
+        Vector3 forward = transform.forward;
+        for (int i  =0; i< rayCount; i++)
+        {
+            float angle = startAngle + i * degIntervalAngle; 
+            Vector3 dir = Quaternion.AngleAxis(angle, Vector3.up) * forward;
+            dir.Normalize();
+            Ray ray = new Ray(rayOrgin, dir);
+            RaycastHit hit;
+            Debug.DrawRay(rayOrgin, dir * distacne, Color.red, 0.1f);
+            if (Physics.Raycast(ray, out hit, curWeapon.itemAtkRange, bossLayer))
+            {
+
+
+                if (!AttackEnd)
+                {
+                    //º¸½º¶§¸®±â 
+                    AttackEnd = true;
+                    break;
+                }
+
+            }
+
+        }
+       
+    }
+
+    public void MeleeAttack1()
+    {
+        MeleeAttackOnce(180, 15);
+    }
+    public void Meleeattack3()
+    {
+        MeleeAttackOnce(360, 15);
+    }
+
+
+    public void AddWeapon(weapon _weapon)
+    {
+        weaponInven.Add(_weapon);
+        _weapon.Init();
+        if (weaponInven.Count == 1)
+        {
+            curWeapon = _weapon;
+            curWeapon.activeWeapon = true;
+            weaponIndex = 0;
+        }
+        else
+        {
+            _weapon.activeWeapon = false;
+        }
+    }
+
+    void DeleteCurWeapon()
+    {
+        if (curWeapon == null) return;
+        if (curWeapon.weaponType == weapon.Type.Basic) return;
+
+        weapon deleteweapon = curWeapon;
+        SwapBasicWeapon();
+        weaponInven.Remove(deleteweapon);
+        Destroy(deleteweapon.gameObject);
+     
+
+
+    }
+    void SwapBasicWeapon()
+    {
+        weaponIndex = 0;
+        curWeapon.activeWeapon = false;
+        curWeapon = weaponInven[0];
+        curWeapon.activeWeapon = true;
+        comboCount = 0;
+        countRangeAttack = 0;
     }
 }
